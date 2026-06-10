@@ -99,11 +99,27 @@ st.markdown("""
 # ── Load models ───────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_models():
-    clf = joblib.load(CLF_MODEL_PATH) if os.path.exists(CLF_MODEL_PATH) else None
-    reg = joblib.load(REG_MODEL_PATH) if os.path.exists(REG_MODEL_PATH) else None
-    return clf, reg
+    errors = []
 
-clf_model, reg_model = load_models()
+    def load_model(path, label):
+        if not os.path.exists(path):
+            errors.append(f"File model {label} tidak ditemukan: {path}")
+            return None
+        try:
+            return joblib.load(path)
+        except Exception as exc:
+            errors.append(f"Gagal load model {label} ({path}): {type(exc).__name__}: {exc}")
+            return None
+
+    clf = load_model(CLF_MODEL_PATH, "klasifikasi")
+    reg = load_model(REG_MODEL_PATH, "regresi")
+    return clf, reg, errors
+
+clf_model, reg_model, model_load_errors = load_models()
+
+if model_load_errors:
+    st.error("Ada masalah saat memuat model machine learning.")
+    st.code("\n".join(model_load_errors), language="text")
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -276,8 +292,8 @@ if menu == "🔍 Klasifikasi Gaya Belajar":
     )
 
     if clf_model is None:
-        st.error(f"⚠️ File `{CLF_MODEL_PATH}` tidak ditemukan. "
-                 "Pastikan file ada di folder yang sama dengan file Streamlit ini.")
+        st.error(f"⚠️ Model klasifikasi belum bisa digunakan. "
+                 f"Pastikan `{CLF_MODEL_PATH}` ada dan cocok dengan versi dependency.")
         st.stop()
 
     with st.form("form_klasifikasi"):
@@ -436,8 +452,8 @@ else:
     )
 
     if reg_model is None:
-        st.error(f"⚠️ File `{REG_MODEL_PATH}` tidak ditemukan. "
-                 "Pastikan file ada di folder yang sama dengan file Streamlit ini.")
+        st.error(f"⚠️ Model regresi belum bisa digunakan. "
+                 f"Pastikan `{REG_MODEL_PATH}` ada dan cocok dengan versi dependency.")
         st.stop()
 
     with st.form("form_regresi"):
